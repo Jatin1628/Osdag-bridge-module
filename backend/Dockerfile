@@ -1,6 +1,5 @@
 FROM python:3.11-slim
 
-# Prevent python from writing pyc files
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -12,16 +11,15 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY backend/requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Copy requirements
+COPY backend/requirements.txt /app/
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . .
+# Copy ONLY backend folder into /app
+COPY backend /app
 
-# Expose Django port
 EXPOSE 8000
 
 CMD python manage.py migrate && \
     python manage.py seed_locations && \
-    python manage.py runserver 0.0.0.0:8000
+    gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
