@@ -1085,7 +1085,7 @@ const BridgeModule = () => {
                 </div>
               )}
               <img
-                src="/images/osdag-bridge-layout.png"
+                src="/images/base.png"
                 alt="Osdag Bridge Layout"
                 style={{
                   width: "100%",
