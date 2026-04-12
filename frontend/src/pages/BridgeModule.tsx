@@ -36,31 +36,10 @@ type ConcreteGrade =
 type ActiveFocus =
   | "typeOfStructure"
   | "location"
-  | "carriageway"
-  | "footpath"
-  | "girders"
-  | "overhang"
+  | "geometry"
+  | "materials"
+  | "additionalGeometry"
   | null;
-
-// Overlay image mapping for smooth label reveal
-const OVERLAY_CONFIG = {
-  carriageway: {
-    src: "/images/carriageway.png",
-    label: "Carriageway Width",
-  },
-  footpath: {
-    src: "/images/footpath.png",
-    label: "Footpath Design",
-  },
-  girders: {
-    src: "/images/no_of_girders.png",
-    label: "Number of Girders",
-  },
-  overhang: {
-    src: "/images/overhang_width.png",
-    label: "Overhang Width",
-  },
-} as const;
 
 const validateSpan = (span: number | ""): string => {
   if (span === "") return "";
@@ -114,243 +93,6 @@ const Warning = ({ text }: { text: string }) => (
     ⚠️ {text}
   </div>
 );
-
-const Error = ({ text }: { text: string }) => (
-  <div
-    style={{
-      marginTop: 8,
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor: "#ffebee",
-      color: "#c62828",
-      padding: "10px 12px",
-      borderRadius: 4,
-      fontSize: 13,
-      fontWeight: 500,
-      border: "1px solid #ef5350",
-    }}
-  >
-    ✕ {text}
-  </div>
-);
-
-// Validation Result Type
-interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-// ===== VALIDATION HELPER FUNCTIONS =====
-
-const validateStructureType = (
-  structureType: StructureType,
-): ValidationResult => {
-  if (!structureType) {
-    return {
-      isValid: false,
-      errors: ["Structure type is required"],
-      warnings: [],
-    };
-  }
-  if (structureType === "Other") {
-    return {
-      isValid: false,
-      errors: ["Other structures are not supported in this version"],
-      warnings: [],
-    };
-  }
-  return { isValid: true, errors: [], warnings: [] };
-};
-
-const validateLocation = (
-  locationMode: LocationMode,
-  selectedState: number | null,
-  selectedDistrict: number | null,
-  manualParams: {
-    windSpeed: number | null;
-    seismicZone: string;
-    minTemp: number | null;
-    maxTemp: number | null;
-  },
-): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!locationMode) {
-    return {
-      isValid: false,
-      errors: [
-        "Please select a location mode (Location Name or Custom Parameters)",
-      ],
-      warnings: [],
-    };
-  }
-
-  if (locationMode === "location") {
-    if (!selectedState) {
-      errors.push("State is required");
-    }
-    if (!selectedDistrict) {
-      errors.push("District is required");
-    }
-  } else if (locationMode === "custom") {
-    if (
-      manualParams.windSpeed === null ||
-      manualParams.windSpeed === undefined
-    ) {
-      errors.push("Wind speed is required");
-    }
-    if (!manualParams.seismicZone) {
-      errors.push("Seismic zone is required");
-    }
-    if (manualParams.minTemp === null || manualParams.minTemp === undefined) {
-      errors.push("Minimum temperature is required");
-    }
-    if (manualParams.maxTemp === null || manualParams.maxTemp === undefined) {
-      errors.push("Maximum temperature is required");
-    }
-    if (
-      manualParams.minTemp !== null &&
-      manualParams.maxTemp !== null &&
-      manualParams.minTemp >= manualParams.maxTemp
-    ) {
-      errors.push("Minimum temperature must be less than maximum temperature");
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-const validateSpanComplete = (span: number | ""): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (span === "") {
-    errors.push("Span is required");
-  } else if (span < 20 || span > 45) {
-    errors.push("Span must be between 20 m and 45 m");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-const validateCarriagewayComplete = (width: number | ""): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (width === "") {
-    errors.push("Carriageway width is required");
-  } else if (width < 4.25) {
-    errors.push("Carriageway width must be at least 4.25 m");
-  } else if (width >= 24) {
-    errors.push("Carriageway width must be less than 24 m");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-const validateFootpathComplete = (footpath: FootpathType): ValidationResult => {
-  if (!footpath) {
-    return {
-      isValid: false,
-      errors: ["Footpath design is required"],
-      warnings: [],
-    };
-  }
-  return { isValid: true, errors: [], warnings: [] };
-};
-
-const validateSkewAngleComplete = (
-  skewAngle: number | "",
-): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (skewAngle === "") {
-    errors.push("Skew angle is required");
-  } else if (Number.isNaN(skewAngle)) {
-    errors.push("Skew angle must be a valid number");
-  } else if (Math.abs(skewAngle) > 15) {
-    warnings.push("Detailed analysis required as per IRC for angles > 15°");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-const validateGeometryModal = (
-  geometry: {
-    spacing: number;
-    girders: number;
-    overhang: number;
-  } | null,
-): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!geometry) return { isValid: true, errors: [], warnings: [] };
-
-  if (geometry.overhang <= 0) {
-    errors.push("Overhang width must be greater than 0");
-  }
-
-  if (geometry.spacing <= 0) {
-    errors.push("Girder spacing must be greater than 0");
-  }
-
-  if (!Number.isInteger(geometry.girders)) {
-    errors.push("Number of girders must be an integer");
-  } else if (geometry.girders < 2) {
-    errors.push("Number of girders must be at least 2");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-const validateMaterials = (
-  girderMaterial: MaterialGrade,
-  crossBracingMaterial: MaterialGrade,
-  deckConcreteGrade: ConcreteGrade,
-): ValidationResult => {
-  const errors: string[] = [];
-
-  if (!girderMaterial) {
-    errors.push("Girder material is required");
-  }
-  if (!crossBracingMaterial) {
-    errors.push("Cross bracing material is required");
-  }
-  if (!deckConcreteGrade) {
-    errors.push("Deck concrete grade is required");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings: [],
-  };
-};
 
 const BridgeModule = () => {
   const [activeTab, setActiveTab] = useState<"basic" | "additional">("basic");
@@ -406,6 +148,10 @@ const BridgeModule = () => {
   const [carriagewayWidth, setCarriagewayWidth] = useState<number | "">("");
   const [footpath, setFootpath] = useState<FootpathType>("none");
   const [skewAngle, setSkewAngle] = useState<number | "">("");
+  const [spanError, setSpanError] = useState<string>("");
+  const [carriagewayError, setCarriagewayError] = useState<string>("");
+  const [skewError, setSkewError] = useState<string>("");
+  const [skewWarning, setSkewWarning] = useState<string>("");
 
   // Material Inputs
   const [girderMaterial, setGirderMaterial] = useState<MaterialGrade>("E250");
@@ -414,34 +160,16 @@ const BridgeModule = () => {
   const [deckConcreteGrade, setDeckConcreteGrade] =
     useState<ConcreteGrade>("M25");
 
-  // ===== COMPREHENSIVE ERROR STATE =====
-  const [formErrors, setFormErrors] = useState({
-    structureType: [] as string[],
-    location: [] as string[],
-    span: [] as string[],
-    carriageway: [] as string[],
-    footpath: [] as string[],
-    skewAngle: [] as string[],
-    materials: [] as string[],
-    geometry: [] as string[],
-  });
-
-  const [formWarnings, setFormWarnings] = useState({
-    skewAngle: [] as string[],
-    geometry: [] as string[],
-  });
-
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const hasBlockingErrors =
+    !!spanError ||
+    !!carriagewayError ||
+    !!skewError ||
+    structureType === "Other";
 
   // Load states
   useEffect(() => {
     getStates().then(setStates);
   }, []);
-
-  // Real-time validation when location inputs change
-  useEffect(() => {
-    handleLocationChange();
-  }, [locationMode, selectedState, selectedDistrict, manualParams]);
 
   // Handle state change
   const handleStateChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -527,71 +255,8 @@ const BridgeModule = () => {
     const overhang = Number((overallWidth - girders * spacing).toFixed(1));
 
     setGeometry({ spacing, girders, overhang });
-    setFormErrors((prev) => ({
-      ...prev,
-      geometry: [],
-    }));
+    setGeometryError("");
     setShowModal(true);
-  };
-
-  const fieldBlockStyle: React.CSSProperties = {
-    marginBottom: 24,
-  };
-
-  // ===== COMPREHENSIVE VALIDATION FUNCTION =====
-  const validateAllFields = (): boolean => {
-    const newErrors = { ...formErrors };
-    const newWarnings = { ...formWarnings };
-
-    // Validate Structure Type
-    const structureValidation = validateStructureType(structureType);
-    newErrors.structureType = structureValidation.errors;
-
-    // Validate Location
-    const locationValidation = validateLocation(
-      locationMode,
-      selectedState,
-      selectedDistrict,
-      manualParams,
-    );
-    newErrors.location = locationValidation.errors;
-
-    // Validate Span
-    const spanValidation = validateSpanComplete(span);
-    newErrors.span = spanValidation.errors;
-
-    // Validate Carriageway
-    const carrigewayValidation = validateCarriagewayComplete(carriagewayWidth);
-    newErrors.carriageway = carrigewayValidation.errors;
-
-    // Validate Footpath
-    const footpathValidation = validateFootpathComplete(footpath);
-    newErrors.footpath = footpathValidation.errors;
-
-    // Validate Skew Angle
-    const skewValidation = validateSkewAngleComplete(skewAngle);
-    newErrors.skewAngle = skewValidation.errors;
-    newWarnings.skewAngle = skewValidation.warnings;
-
-    // Validate Geometry Modal (if values exist)
-    const geometryValidation = validateGeometryModal(geometry);
-    newErrors.geometry = geometryValidation.errors;
-    newWarnings.geometry = geometryValidation.warnings;
-
-    // Validate Materials
-    const materialsValidation = validateMaterials(
-      girderMaterial,
-      crossBracingMaterial,
-      deckConcreteGrade,
-    );
-    newErrors.materials = materialsValidation.errors;
-
-    setFormErrors(newErrors);
-    setFormWarnings(newWarnings);
-
-    // Check if there are any blocking errors
-    const hasErrors = Object.values(newErrors).some((arr) => arr.length > 0);
-    return !hasErrors;
   };
 
   const updateFromSpacing = (spacing: number) => {
@@ -599,10 +264,7 @@ const BridgeModule = () => {
 
     const overallWidth = carriagewayWidth + 5;
     if (spacing <= 0 || spacing >= overallWidth) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Invalid spacing"],
-      }));
+      setGeometryError("Invalid spacing");
       return;
     }
 
@@ -610,18 +272,12 @@ const BridgeModule = () => {
     const overhang = Number((overallWidth - girders * spacing).toFixed(1));
 
     if (overhang < 0) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Geometry constraints violated"],
-      }));
+      setGeometryError("Geometry constraints violated");
       return;
     }
 
     setGeometry({ spacing, girders, overhang });
-    setFormErrors((prev) => ({
-      ...prev,
-      geometry: [],
-    }));
+    setGeometryError("");
   };
 
   const updateFromGirders = (girders: number) => {
@@ -629,10 +285,7 @@ const BridgeModule = () => {
 
     const overallWidth = carriagewayWidth + 5;
     if (girders <= 0) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Number of girders must be positive"],
-      }));
+      setGeometryError("Number of girders must be positive");
       return;
     }
 
@@ -641,18 +294,12 @@ const BridgeModule = () => {
     );
 
     if (overhang < 0 || overhang >= overallWidth) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Geometry constraints violated"],
-      }));
+      setGeometryError("Geometry constraints violated");
       return;
     }
 
     setGeometry({ spacing: geometry.spacing, girders, overhang });
-    setFormErrors((prev) => ({
-      ...prev,
-      geometry: [],
-    }));
+    setGeometryError("");
   };
 
   const updateFromOverhang = (overhang: number) => {
@@ -660,10 +307,7 @@ const BridgeModule = () => {
 
     const overallWidth = carriagewayWidth + 5;
     if (overhang < 0 || overhang >= overallWidth) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Invalid overhang"],
-      }));
+      setGeometryError("Invalid overhang");
       return;
     }
 
@@ -672,110 +316,36 @@ const BridgeModule = () => {
     );
 
     if (spacing <= 0) {
-      setFormErrors((prev) => ({
-        ...prev,
-        geometry: ["Geometry constraints violated"],
-      }));
+      setGeometryError("Geometry constraints violated");
       return;
     }
 
     setGeometry({ spacing, girders: geometry.girders, overhang });
-    setFormErrors((prev) => ({
-      ...prev,
-      geometry: [],
-    }));
+    setGeometryError("");
+  };
+
+  // Geometric details field-level validation handlers
+  const handleSpanBlur = () => {
+    setSpanError(validateSpan(span));
+  };
+
+  const fieldBlockStyle: React.CSSProperties = {
+    marginBottom: 24,
+  };
+
+  const handleCarriagewayBlur = () => {
+    setCarriagewayError(validateCarriagewayWidth(carriagewayWidth));
+  };
+
+  const handleSkewBlur = () => {
+    const { error, warning } = validateSkewAngle(skewAngle);
+    setSkewError(error);
+    setSkewWarning(warning);
   };
 
   const runBackendValidation = async () => {
-    const isValid = validateAllFields();
-
-    if (isValid) {
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
-      // TODO: Proceed to next step or submit to backend
-      console.log("✓ All inputs validated successfully");
-    }
+    //for future updatse
   };
-
-  // ===== REAL-TIME VALIDATION HANDLERS =====
-  const handleStructureTypeChange = (value: StructureType) => {
-    setStructureType(value);
-    const validation = validateStructureType(value);
-    setFormErrors((prev) => ({
-      ...prev,
-      structureType: validation.errors,
-    }));
-  };
-
-  const handleSpanChange = (value: number | "") => {
-    setSpan(value);
-    const validation = validateSpanComplete(value);
-    setFormErrors((prev) => ({
-      ...prev,
-      span: validation.errors,
-    }));
-  };
-
-  const handleCarriagewayChange = (value: number | "") => {
-    setCarriagewayWidth(value);
-    const validation = validateCarriagewayComplete(value);
-    setFormErrors((prev) => ({
-      ...prev,
-      carriageway: validation.errors,
-    }));
-  };
-
-  const handleFootpathChange = (value: FootpathType) => {
-    setFootpath(value);
-    const validation = validateFootpathComplete(value);
-    setFormErrors((prev) => ({
-      ...prev,
-      footpath: validation.errors,
-    }));
-  };
-
-  const handleSkewAngleChange = (value: number | "") => {
-    setSkewAngle(value);
-    const validation = validateSkewAngleComplete(value);
-    setFormErrors((prev) => ({
-      ...prev,
-      skewAngle: validation.errors,
-    }));
-    setFormWarnings((prev) => ({
-      ...prev,
-      skewAngle: validation.warnings,
-    }));
-  };
-
-  const handleMaterialsChange = () => {
-    const validation = validateMaterials(
-      girderMaterial,
-      crossBracingMaterial,
-      deckConcreteGrade,
-    );
-    setFormErrors((prev) => ({
-      ...prev,
-      materials: validation.errors,
-    }));
-  };
-
-  const handleLocationChange = () => {
-    const validation = validateLocation(
-      locationMode,
-      selectedState,
-      selectedDistrict,
-      manualParams,
-    );
-    setFormErrors((prev) => ({
-      ...prev,
-      location: validation.errors,
-    }));
-  };
-
-  // Computed: Check if there are blocking errors
-  const hasBlockingErrors = Object.values(formErrors).some(
-    (arr) => arr.length > 0,
-  );
 
   //closest location
   const fetchClosestLocation = async () => {
@@ -800,136 +370,15 @@ const BridgeModule = () => {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Success Message Toast */}
-      {showSuccessMessage && (
-        <div
-          style={{
-            position: "fixed",
-            top: 20,
-            right: 20,
-            backgroundColor: "#4caf50",
-            color: "#fff",
-            padding: "14px 20px",
-            borderRadius: 6,
-            fontSize: 14,
-            fontWeight: 600,
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            zIndex: 2000,
-            animation: "slideIn 0.3s ease-in-out",
-          }}
-        >
-          ✓ All inputs validated successfully!
-        </div>
-      )}
-
-      <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
-
-      {/* LOGO HEADER */}
-      <div
-        style={{
-          color: "#90af13",
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          padding: "8px 24px",
-          backgroundColor: "#f8f9fa",
-          borderBottom: "2px solid #e0e0e0",
-          height: 40,
-        }}
-      >
-        {/* Logo Image */}
-        <img
-          src="/images/logo.png"
-          alt="OSDAG Bridge Module"
-          style={{
-            color: "#90af13",
-            height: 40,
-            width: "auto",
-            maxWidth: 200,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-
-        {/* Title */}
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "70px",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {/* Left Title */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 20,
-                fontWeight: 800,
-                color: "#90af13",
-              }}
-            >
-              OSDAG Bridge Module
-            </h1>
-          </div>
-
-          {/* Perfect Center Title */}
-          <h3
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              margin: 0,
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#90af13",
-            }}
-          >
-            Group Design
-          </h3>
-        </div>
-      </div>
-
       {/* Tabs Section*/}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          height: "42px",
-          border: "2px solid #90af13",
-        }}
-      >
+      <div style={{ display: "flex", borderBottom: "2px solid #444" }}>
         <button
           onClick={() => setActiveTab("basic")}
           style={{
-            padding: "4px 20px",
-            height: "38px",
-            lineHeight: "1",
-            margin: 0,
+            padding: "10px 20px",
             border: "none",
             background: "none",
-            borderBottom: activeTab === "basic" ? "3px solid #90af13" : "none",
+            borderBottom: activeTab === "basic" ? "3px solid #007bff" : "none",
             color: "black",
             cursor: "pointer",
           }}
@@ -940,20 +389,30 @@ const BridgeModule = () => {
         <button
           onClick={() => setActiveTab("additional")}
           style={{
-            padding: "4px 20px",
-            height: "38px",
-            lineHeight: "1",
-            margin: 0,
+            padding: "10px 20px",
             border: "none",
             background: "none",
             borderBottom:
-              activeTab === "additional" ? "3px solid #90af13" : "none",
+              activeTab === "additional" ? "3px solid #007bff" : "none",
             color: "black",
             cursor: "pointer",
           }}
         >
           Additional Inputs
         </button>
+
+        
+          <h3
+            style={{
+             marginLeft:"450px",
+
+              border: "none",
+              background: "none",
+            }}
+          >
+            Group Design
+          </h3>
+        
       </div>
 
       {/* Main */}
@@ -963,7 +422,7 @@ const BridgeModule = () => {
             display: "flex",
             flex: 1,
             width: "100%",
-            minHeight: "calc(100vh - 120px)",
+            minHeight: "calc(100vh - 50px)",
           }}
         >
           {/* LEFT PANEL - 30% */}
@@ -1005,7 +464,7 @@ const BridgeModule = () => {
                 id="structureType"
                 value={structureType}
                 onChange={(e) =>
-                  handleStructureTypeChange(e.target.value as StructureType)
+                  setStructureType(e.target.value as StructureType)
                 }
                 style={selectStyle}
               >
@@ -1014,24 +473,19 @@ const BridgeModule = () => {
                 <option value="Other">Other</option>
               </select>
 
-              {/* ERROR/WARNING MESSAGES */}
-              {formErrors.structureType.length > 0 &&
-                formErrors.structureType.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
-              {structureType === "Other" &&
-                formErrors.structureType.length === 0 && (
-                  <p
-                    style={{
-                      marginTop: 8,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "#d32f2f",
-                    }}
-                  >
-                    Other structures not included
-                  </p>
-                )}
+              {/* WARNING MESSAGE */}
+              {structureType === "Other" && (
+                <p
+                  style={{
+                    marginTop: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "#d32f2f", // RED warning
+                  }}
+                >
+                  Other structures not included
+                </p>
+              )}
             </div>
 
             {/* Project Location Section*/}
@@ -1072,12 +526,11 @@ const BridgeModule = () => {
                   <input
                     type="checkbox"
                     checked={locationMode === "location"}
-                    onChange={() => {
+                    onChange={() =>
                       setLocationMode(
                         locationMode === "location" ? null : "location",
-                      );
-                      handleLocationChange();
-                    }}
+                      )
+                    }
                   />
                   Enter Location Name
                 </label>
@@ -1102,7 +555,6 @@ const BridgeModule = () => {
                         setLocationMode("custom");
                         setShowCustomModal(true);
                       }
-                      handleLocationChange();
                     }}
                   />
                   Tabulate Custom Loading Parameters
@@ -1162,12 +614,6 @@ const BridgeModule = () => {
                   </div>
                 </>
               )}
-
-              {/* LOCATION ERRORS */}
-              {formErrors.location.length > 0 &&
-                formErrors.location.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
 
               {/* RESULTING PARAMS */}
 
@@ -1273,6 +719,8 @@ const BridgeModule = () => {
 
             {/* 3. Geometric Details */}
             <div
+              onMouseEnter={() => setActiveFocus("geometry")}
+              onMouseLeave={() => setActiveFocus(null)}
               style={{
                 opacity: structureType === "Other" ? 0.4 : 1,
                 maxWidth: 520,
@@ -1307,24 +755,17 @@ const BridgeModule = () => {
                   placeholder="Enter span length"
                   value={span}
                   onChange={(e) =>
-                    handleSpanChange(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
+                    setSpan(e.target.value === "" ? "" : Number(e.target.value))
                   }
+                  onBlur={handleSpanBlur}
                   disabled={structureType === "Other"}
                   style={inputStyle}
                 />
-                {formErrors.span.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
+                {spanError && <Warning text={spanError} />}
               </div>
 
               {/* CARRIAGEWAY */}
-              <div
-                onMouseEnter={() => setActiveFocus("carriageway")}
-                onMouseLeave={() => setActiveFocus(null)}
-                style={fieldBlockStyle}
-              >
+              <div style={fieldBlockStyle}>
                 <div
                   style={{ fontSize: 12, fontWeight: 700, color: "#0b5cff" }}
                 >
@@ -1340,24 +781,19 @@ const BridgeModule = () => {
                   placeholder="Enter width"
                   value={carriagewayWidth}
                   onChange={(e) =>
-                    handleCarriagewayChange(
+                    setCarriagewayWidth(
                       e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
+                  onBlur={handleCarriagewayBlur}
                   disabled={structureType === "Other"}
                   style={inputStyle}
                 />
-                {formErrors.carriageway.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
+                {carriagewayError && <Warning text={carriagewayError} />}
               </div>
 
               {/* FOOTPATH */}
-              <div
-                onMouseEnter={() => setActiveFocus("footpath")}
-                onMouseLeave={() => setActiveFocus(null)}
-                style={fieldBlockStyle}
-              >
+              <div style={fieldBlockStyle}>
                 <div
                   style={{ fontSize: 12, fontWeight: 700, color: "#0b5cff" }}
                 >
@@ -1370,9 +806,7 @@ const BridgeModule = () => {
                 </div>
                 <select
                   value={footpath}
-                  onChange={(e) =>
-                    handleFootpathChange(e.target.value as FootpathType)
-                  }
+                  onChange={(e) => setFootpath(e.target.value as FootpathType)}
                   disabled={structureType === "Other"}
                   style={selectStyle}
                 >
@@ -1381,9 +815,6 @@ const BridgeModule = () => {
                   <option value="double">Both sides</option>
                   <option value="none">None</option>
                 </select>
-                {formErrors.footpath.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
               </div>
 
               {/* SKEW */}
@@ -1403,24 +834,22 @@ const BridgeModule = () => {
                   placeholder="Enter skew angle"
                   value={skewAngle}
                   onChange={(e) =>
-                    handleSkewAngleChange(
+                    setSkewAngle(
                       e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
+                  onBlur={handleSkewBlur}
                   disabled={structureType === "Other"}
                   style={inputStyle}
                 />
-                {formErrors.skewAngle.map((error, idx) => (
-                  <Error key={idx} text={error} />
-                ))}
-                {formWarnings.skewAngle.map((warning, idx) => (
-                  <Warning key={idx} text={warning} />
-                ))}
+                {skewWarning && <Warning text={skewWarning} />}
               </div>
             </div>
 
             {/*Modify Additional Geometry */}
             <div
+              onMouseEnter={() => setActiveFocus("additionalGeometry")}
+              onMouseLeave={() => setActiveFocus(null)}
               style={{
                 marginTop: 24,
                 opacity: structureType === "Other" ? 0.4 : 1,
@@ -1447,6 +876,8 @@ const BridgeModule = () => {
 
             {/*Material Inputs */}
             <div
+              onMouseEnter={() => setActiveFocus("materials")}
+              onMouseLeave={() => setActiveFocus(null)}
               style={{
                 opacity: structureType === "Other" ? 0.4 : 1,
                 marginTop: 24,
@@ -1481,10 +912,9 @@ const BridgeModule = () => {
                 <select
                   value={girderMaterial}
                   disabled={structureType === "Other"}
-                  onChange={(e) => {
-                    setGirderMaterial(e.target.value as MaterialGrade);
-                    handleMaterialsChange();
-                  }}
+                  onChange={(e) =>
+                    setGirderMaterial(e.target.value as MaterialGrade)
+                  }
                   style={{
                     ...selectStyle,
                     borderColor: "#0b5cff", // active look like image
@@ -1516,10 +946,9 @@ const BridgeModule = () => {
                 <select
                   value={crossBracingMaterial}
                   disabled={structureType === "Other"}
-                  onChange={(e) => {
-                    setCrossBracingMaterial(e.target.value as MaterialGrade);
-                    handleMaterialsChange();
-                  }}
+                  onChange={(e) =>
+                    setCrossBracingMaterial(e.target.value as MaterialGrade)
+                  }
                   style={selectStyle}
                 >
                   <option value="">Select bracing material</option>
@@ -1546,10 +975,9 @@ const BridgeModule = () => {
                 <select
                   value={deckConcreteGrade}
                   disabled={structureType === "Other"}
-                  onChange={(e) => {
-                    setDeckConcreteGrade(e.target.value as ConcreteGrade);
-                    handleMaterialsChange();
-                  }}
+                  onChange={(e) =>
+                    setDeckConcreteGrade(e.target.value as ConcreteGrade)
+                  }
                   style={selectStyle}
                 >
                   <option value="">Select concrete grade</option>
@@ -1563,11 +991,6 @@ const BridgeModule = () => {
                   <option value="M60">M60</option>
                 </select>
               </div>
-
-              {/* MATERIALS ERRORS */}
-              {formErrors.materials.map((error, idx) => (
-                <Error key={idx} text={error} />
-              ))}
 
               {/* VALIDATE BUTTON */}
               <button
@@ -1616,58 +1039,73 @@ const BridgeModule = () => {
           {/* RIGHT PANEL - 60% */}
           <div
             style={{
-              position: "relative",
-              width: "100%",
-              height: "calc(100% - 60px)",
-              border: "1px solid #444",
-              borderRadius: 6,
+              width: "70%",
+              minWidth: "60%",
+              padding: "20px",
+              boxSizing: "border-box",
+              height: "100%",
               overflow: "hidden",
-              background: "#fff",
             }}
           >
-            <img
-              src="/images/base.png"
-              alt="Bridge Reference"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                position: "absolute",
-                inset: 0,
-                pointerEvents: "none",
-              }}
-            />
+            <h3>Reference Image</h3>
 
-            {/* Label Overlays - Render Dynamically */}
-            {(
-              Object.entries(OVERLAY_CONFIG) as [
-                keyof typeof OVERLAY_CONFIG,
-                (typeof OVERLAY_CONFIG)[keyof typeof OVERLAY_CONFIG],
-              ][]
-            ).map(([key, config]) => (
+            <div
+              className="osdag-right-panel"
+              style={{ height: "100%", position: "relative" }}
+            >
+              {activeFocus && (
+                <div
+                  style={{
+                    marginTop: 1,
+                    padding: "12px 14px",
+                    borderRadius: 6,
+                    backgroundColor: "#f7f0ff",
+                    borderLeft: "4px solid #7a2ee6",
+                    fontSize: 14,
+                    position: "absolute",
+                    zIndex: 1,
+                    color: "#4a148c",
+                    minHeight: 48,
+                  }}
+                >
+                  {activeFocus === "typeOfStructure" &&
+                    "The structure type determines which bridge configurations and checks are applicable in this module."}
+
+                  {activeFocus === "location" &&
+                    "Project location governs wind speed, seismic zone, and temperature values as per applicable Indian standards."}
+
+                  {activeFocus === "geometry" &&
+                    "Geometric inputs define span length, carriageway width, footpath arrangement, and skew angle of the bridge deck."}
+
+                  {activeFocus === "additionalGeometry" &&
+                    "Additional geometry allows fine control of girder spacing, overhang width, and number of girders used in design."}
+
+                  {activeFocus === "materials" &&
+                    "Material inputs specify steel grades for girders and bracing, and concrete grade for the deck slab."}
+                </div>
+              )}
               <img
-                key={key}
-                src={config.src}
-                alt={config.label}
+                src="/images/osdag-bridge-layout.png"
+                alt="Osdag Bridge Layout"
                 style={{
                   width: "100%",
-                  height: "100%",
+                  height: "calc(100% - 60px)",
                   objectFit: "contain",
-                  position: "absolute",
-                  inset: 0,
-                  opacity: activeFocus === key ? 1 : 0,
-                  transition: "opacity 0.35s cubic-bezier(0.4, 0.0, 0.2, 1)",
-                  pointerEvents: "none",
+                  border: "1px solid #444",
+                  borderRadius: "4px",
+                  display: "block",
+                  position: "relative",
+                  zIndex: -1,
                 }}
               />
-            ))}
+            </div>
           </div>
         </div>
       ) : (
         <div style={{ padding: "20px" }}>
           <h2>Additional Inputs</h2>
           <p style={{ color: "#777" }}>
-            Empty Section for further extension.
+            Placeholder section as per Osdag screening task requirements.
           </p>
         </div>
       )}
@@ -1729,20 +1167,15 @@ const BridgeModule = () => {
 
             {/* INPUTS */}
             <div style={{ marginTop: 20, display: "grid", gap: 14 }}>
-              <div
-                onMouseEnter={() => setActiveFocus("overhang")}
-                onMouseLeave={() => setActiveFocus(null)}
-              >
-                <input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  placeholder="Deck Overhang Width (m)"
-                  value={geometry?.overhang ?? ""}
-                  onChange={(e) => updateFromOverhang(Number(e.target.value))}
-                  style={modalInputStyle}
-                />
-              </div>
+              <input
+                type="number"
+                step="0.1"
+                inputMode="decimal"
+                placeholder="Deck Overhang Width (m)"
+                value={geometry?.overhang ?? ""}
+                onChange={(e) => updateFromOverhang(Number(e.target.value))}
+                style={modalInputStyle}
+              />
 
               <input
                 type="number"
@@ -1754,67 +1187,33 @@ const BridgeModule = () => {
                 style={modalInputStyle}
               />
 
-              <div
-                onMouseEnter={() => setActiveFocus("girders")}
-                onMouseLeave={() => setActiveFocus(null)}
-              >
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Number of Girders"
-                  value={geometry?.girders ?? ""}
-                  onChange={(e) => updateFromGirders(Number(e.target.value))}
-                  style={modalInputStyle}
-                />
-              </div>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="Number of Girders"
+                value={geometry?.girders ?? ""}
+                onChange={(e) => updateFromGirders(Number(e.target.value))}
+                style={modalInputStyle}
+              />
             </div>
 
             {/* ERROR BOX */}
-            {formErrors.geometry.length > 0 && (
-              <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
-                {formErrors.geometry.map((error, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      background: "#ffebee",
-                      color: "#c62828",
-                      padding: "12px 14px",
-                      borderRadius: 6,
-                      border: "1px solid #ef5350",
-                      fontWeight: 500,
-                      fontSize: 13,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    ✕ {error}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {formWarnings.geometry.length > 0 && (
-              <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
-                {formWarnings.geometry.map((warning, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      background: "#fff8e1",
-                      color: "#8a6d00",
-                      padding: "12px 14px",
-                      borderRadius: 6,
-                      border: "1px solid #ffb300",
-                      fontWeight: 500,
-                      fontSize: 13,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    ⚠️ {warning}
-                  </div>
-                ))}
+            {geometryError && (
+              <div
+                style={{
+                  marginTop: 18,
+                  background: "#FFF5F5",
+                  color: "#D32F2F",
+                  padding: "12px 14px",
+                  borderRadius: 6,
+                  borderLeft: "5px solid #D32F2F",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                ✖ {geometryError}
               </div>
             )}
 
@@ -1841,18 +1240,16 @@ const BridgeModule = () => {
               </button>
 
               <button
-                disabled={formErrors.geometry.length > 0}
+                disabled={!!geometryError}
                 onClick={() => setShowModal(false)}
                 style={{
-                  background:
-                    formErrors.geometry.length > 0 ? "#9bbcf3" : "#000000",
+                  background: geometryError ? "#9bbcf3" : "#0B5CFF",
                   color: "#fff",
                   border: "none",
                   padding: "12px 32px",
                   borderRadius: 6,
                   fontWeight: 700,
-                  cursor:
-                    formErrors.geometry.length > 0 ? "not-allowed" : "pointer",
+                  cursor: geometryError ? "not-allowed" : "pointer",
                 }}
               >
                 Confirm
@@ -1878,7 +1275,7 @@ const BridgeModule = () => {
           <div
             style={{
               width: 600,
-              background: "#ffd200",
+              background: "#fff",
               borderRadius: 8,
               padding: 20,
             }}
